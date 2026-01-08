@@ -593,13 +593,13 @@ export default function DraftRoomPage() {
                 </thead>
 
                 <tbody>
-                  {picks.map((pk, i) => {
+                  {[...picks].reverse().map((pk, i, reversed) => {
                     const overallPick = pk.round; // stored as overall pick #
                     const { roundNumber, pickInRound } = nCoaches
                       ? roundAndPickInRound(overallPick, nCoaches)
                       : { roundNumber: 0, pickInRound: 0 };
 
-                    const prev = picks[i - 1];
+                    const prev = reversed[i - 1];
                     const prevRound = prev && nCoaches
                       ? roundAndPickInRound(prev.round, nCoaches).roundNumber
                       : null;
