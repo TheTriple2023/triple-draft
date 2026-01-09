@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 type Room = { id: string; name: string; draft_order: string[] };
 type Coach = { id: string; coach_name: string };
@@ -284,6 +285,18 @@ export default function DraftRoomPage() {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState("ALL");
   const [busyPlayerId, setBusyPlayerId] = useState<string | null>(null);
+    const hubHref = useMemo(() => {
+    const t = token ? `?token=${encodeURIComponent(token)}` : "";
+    return `/room/${encodeURIComponent(roomCode)}${t}`;
+  }, [roomCode, token]);
+
+  const standingsHref = useMemo(() => {
+    return `/standings?room=${encodeURIComponent(roomCode)}`;
+  }, [roomCode]);
+
+  const rostersHref = useMemo(() => {
+    return `/rosters?room=${encodeURIComponent(roomCode)}`;
+  }, [roomCode]);
 
   // ✅ pointsByPlayer[playerId] = [g1, g2, g3, g4]
   const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number[]>>({});
@@ -671,6 +684,28 @@ export default function DraftRoomPage() {
               <p className="mt-1 text-white/60">
                 Up next: <span className="font-semibold">{upNextCoachName}</span>
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+  <Link
+    href={hubHref}
+    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 text-white"
+  >
+    Room Hub
+  </Link>
+
+  <Link
+    href={standingsHref}
+    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 text-white"
+  >
+    Standings
+  </Link>
+
+  <Link
+    href={rostersHref}
+    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 text-white"
+  >
+    Rosters
+  </Link>
+</div>
 
               {isCommissioner && (
                 <button
