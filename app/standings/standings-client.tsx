@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
 import { supabase } from "@/lib/supabase";
 
 type StandingsRow = {
@@ -21,6 +20,31 @@ export default function StandingsClient({
   roomCode: string;
   token: string;
 }) {
+  // ✅ "effective" values (fixes Standings when roomCode isn't passed in URL/props)
+  const [effectiveRoomCode, setEffectiveRoomCode] = useState<string>("");
+  const [effectiveToken, setEffectiveToken] = useState<string>("");
+
+  useEffect(() => {
+    const savedRoom =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("last_room_code") ?? "").trim()
+        : "";
+
+    const savedToken =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("coach_token") ?? "").trim()
+        : "";
+
+    const finalRoom = (roomCode ?? "").trim() || savedRoom || "TRIPLE2026";
+    const finalToken = (token ?? "").trim() || savedToken || "";
+
+    setEffectiveRoomCode(finalRoom);
+    setEffectiveToken(finalToken);
+
+    // keep storage up to date
+    if (finalRoom) localStorage.setItem("last_room_code", finalRoom);
+    if (finalToken) localStorage.setItem("coach_token", finalToken);
+  }, [roomCode, token]);
 
   const [roomId, setRoomId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState<string | null>(null);
@@ -28,14 +52,14 @@ export default function StandingsClient({
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // load room_id from roomCode
+  // load room_id from effectiveRoomCode
   useEffect(() => {
     const loadRoom = async () => {
       try {
         setStatus("loading");
         setErrorMsg("");
 
-        if (!roomCode) {
+        if (!effectiveRoomCode) {
           setStatus("error");
           setErrorMsg('Missing room code. Use URL like: /standings?room=TRIPLE2026');
           return;
@@ -44,7 +68,7 @@ export default function StandingsClient({
         const r = await supabase
           .from("rooms")
           .select("id,name")
-          .eq("room_code", roomCode)
+          .eq("room_code", effectiveRoomCode)
           .maybeSingle();
 
         if (r.error || !r.data) {
@@ -63,7 +87,7 @@ export default function StandingsClient({
     };
 
     loadRoom();
-  }, [roomCode]);
+  }, [effectiveRoomCode]);
 
   // load standings rows
   useEffect(() => {
@@ -89,7 +113,9 @@ export default function StandingsClient({
       }));
 
       // sort high -> low
-      normalized.sort((a, b) => b.total_points - a.total_points || a.coach_name.localeCompare(b.coach_name));
+      normalized.sort(
+        (a, b) => b.total_points - a.total_points || a.coach_name.localeCompare(b.coach_name)
+      );
       setRows(normalized);
     };
 
@@ -142,20 +168,32 @@ export default function StandingsClient({
             <div>
               <h1 className="text-2xl font-semibold">Standings</h1>
               <p className="mt-1 text-white/70">
-                Room: <span className="font-mono">{roomCode || "—"}</span>
+                Room: <span className="font-mono">{effectiveRoomCode || "—"}</span>
                 {roomName ? <span className="text-white/50"> — {roomName}</span> : null}
               </p>
             </div>
 
             <div className="flex gap-2">
               <a
-                href={roomCode ? `/rosters?room=${encodeURIComponent(roomCode)}&token=${encodeURIComponent(token)}` : "/rosters"}
+                href={
+                  effectiveRoomCode
+                    ? `/rosters?room=${encodeURIComponent(effectiveRoomCode)}&token=${encodeURIComponent(
+                        effectiveToken
+                      )}`
+                    : "/rosters"
+                }
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
               >
                 Rosters
               </a>
               <a
-                href={roomCode ? `/draft/${roomCode}?token=${encodeURIComponent(token)}` : "/"}
+                href={
+                  effectiveRoomCode
+                    ? `/draft/${encodeURIComponent(effectiveRoomCode)}?token=${encodeURIComponent(
+                        effectiveToken
+                      )}`
+                    : "/"
+                }
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
               >
                 Back to Draft
