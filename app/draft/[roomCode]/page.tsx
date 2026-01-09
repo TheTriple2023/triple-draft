@@ -850,70 +850,66 @@ export default function DraftRoomPage() {
                 </thead>
 
                 <tbody>
-                  {[...picks].reverse().map((pk, i, reversed) => {
-                    const overallPick = pk.round;
-                    const { roundNumber, pickInRound } = nCoaches
-                      ? roundAndPickInRound(overallPick, nCoaches)
-                      : { roundNumber: 0, pickInRound: 0 };
+  {/* ON THE CLOCK row should be FIRST */}
+  {nCoaches ? (
+    <tr className="border-b border-white/10 bg-emerald-500/10 ring-1 ring-emerald-400/20">
+      <td className="p-3 font-mono font-semibold">{nextOverallPick}</td>
+      <td className="p-3 font-mono">
+        {nextSlot.roundNumber}.{nextSlot.pickInRound}
+      </td>
+      <td className="p-3 font-semibold text-emerald-200">
+        {onTheClockCoachName}{" "}
+        <span className="text-emerald-200/70">(ON THE CLOCK)</span>
+      </td>
+      <td className="p-3 text-white/60">—</td>
+    </tr>
+  ) : null}
 
-                    const prev = reversed[i - 1];
-                    const prevRound =
-                      prev && nCoaches
-                        ? roundAndPickInRound(prev.round, nCoaches).roundNumber
-                        : null;
+  {/* Existing picks list (newest first) */}
+  {[...picks].reverse().map((pk, i, reversed) => {
+    const overallPick = pk.round;
+    const { roundNumber, pickInRound } = nCoaches
+      ? roundAndPickInRound(overallPick, nCoaches)
+      : { roundNumber: 0, pickInRound: 0 };
 
-                    const roundChanged = nCoaches ? prevRound !== roundNumber : i === 0;
+    const prev = reversed[i - 1];
+    const prevRound =
+      prev && nCoaches ? roundAndPickInRound(prev.round, nCoaches).roundNumber : null;
 
-                    const roundTint =
-                      roundNumber % 2 === 0 ? "bg-white/[0.03]" : "bg-transparent";
+    const roundChanged = nCoaches ? prevRound !== roundNumber : i === 0;
+    const roundTint = roundNumber % 2 === 0 ? "bg-white/[0.03]" : "bg-transparent";
+    const isMine = pk.coach_id === coach?.id;
 
-                    const isMine = pk.coach_id === coach?.id;
+    return (
+      <FragmentRow
+        key={pk.id}
+        roundChanged={roundChanged}
+        roundNumber={roundNumber}
+        rowClassName={cx(
+          "border-b border-white/5 transition",
+          roundTint,
+          isMine && "bg-sky-500/10"
+        )}
+        cells={{
+          overallPick,
+          roundLabel: nCoaches ? `${roundNumber}.${pickInRound}` : "—",
+          coachName: pk.coach?.coach_name ?? "—",
+          playerText: pk.player
+            ? `${pk.player.player_name} (${pk.player.nfl_team} ${pk.player.position})`
+            : "—",
+        }}
+      />
+    );
+  })}
 
-                    return (
-                      <FragmentRow
-                        key={pk.id}
-                        roundChanged={roundChanged}
-                        roundNumber={roundNumber}
-                        rowClassName={cx(
-                          "border-b border-white/5 transition",
-                          roundTint,
-                          isMine && "bg-sky-500/10"
-                        )}
-                        cells={{
-                          overallPick,
-                          roundLabel: nCoaches ? `${roundNumber}.${pickInRound}` : "—",
-                          coachName: pk.coach?.coach_name ?? "—",
-                          playerText: pk.player
-                            ? `${pk.player.player_name} (${pk.player.nfl_team} ${pk.player.position})`
-                            : "—",
-                        }}
-                      />
-                    );
-                  })}
-
-                  {!picks.length && (
-                    <tr>
-                      <td className="p-3 text-white/60" colSpan={4}>
-                        No picks yet.
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* ON THE CLOCK row (next pick slot) */}
-                  {nCoaches ? (
-                    <tr className="border-t border-white/10 bg-emerald-500/10 ring-1 ring-emerald-400/20">
-                      <td className="p-3 font-mono font-semibold">{nextOverallPick}</td>
-                      <td className="p-3 font-mono">
-                        {nextSlot.roundNumber}.{nextSlot.pickInRound}
-                      </td>
-                      <td className="p-3 font-semibold text-emerald-200">
-                        {onTheClockCoachName}{" "}
-                        <span className="text-emerald-200/70">(ON THE CLOCK)</span>
-                      </td>
-                      <td className="p-3 text-white/60">—</td>
-                    </tr>
-                  ) : null}
-                </tbody>
+  {!picks.length && (
+    <tr>
+      <td className="p-3 text-white/60" colSpan={4}>
+        No picks yet.
+      </td>
+    </tr>
+  )}
+</tbody>
               </table>
             </div>
 
