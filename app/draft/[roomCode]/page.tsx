@@ -33,13 +33,14 @@ type PickRow = {
   id: string;
   room_id: string;
   coach_id: string;
-  // IMPORTANT: we are treating this as OVERALL PICK NUMBER (1,2,3...)
+  // IMPORTANT: treating as OVERALL PICK NUMBER (1,2,3...)
   round: number;
   player_id: string;
   created_at: string;
   player?: PickPlayer;
   coach?: PickCoach;
 };
+
 type PlayerPointsRow = {
   player_id: string;
   game_number: number; // 1..4
@@ -55,20 +56,34 @@ type NflTeamStatusRow = {
 function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
+
 const teamPosStyles = (pos?: string) => {
-  switch (pos) {
+  switch ((pos ?? "").toUpperCase()) {
     case "QB":
-      return { row: "bg-sky-500/10", badge: "bg-sky-500/20 text-sky-100 border-sky-400/30" };
+      return {
+        row: "bg-sky-500/10",
+        badge: "bg-sky-500/20 text-sky-100 border-sky-400/30",
+      };
     case "RB":
-      return { row: "bg-emerald-500/10", badge: "bg-emerald-500/20 text-emerald-100 border-emerald-400/30" };
+      return {
+        row: "bg-emerald-500/10",
+        badge: "bg-emerald-500/20 text-emerald-100 border-emerald-400/30",
+      };
     case "WR":
-      return { row: "bg-violet-500/10", badge: "bg-violet-500/20 text-violet-100 border-violet-400/30" };
+      return {
+        row: "bg-violet-500/10",
+        badge: "bg-violet-500/20 text-violet-100 border-violet-400/30",
+      };
     case "TE":
-      return { row: "bg-amber-500/10", badge: "bg-amber-500/20 text-amber-100 border-amber-400/30" };
+      return {
+        row: "bg-amber-500/10",
+        badge: "bg-amber-500/20 text-amber-100 border-amber-400/30",
+      };
     default:
       return { row: "", badge: "bg-white/5 text-white/70 border-white/15" };
   }
 };
+
 // =============================
 // UI helpers (pane + positions)
 // =============================
@@ -76,13 +91,8 @@ const teamPosStyles = (pos?: string) => {
 function paneClass(kind: "available" | "board" | "team") {
   const base = "rounded-2xl border border-white/10 p-5";
 
-  if (kind === "available") {
-    return cx(base, "bg-slate-950/55");
-  }
-
-  if (kind === "board") {
-    return cx(base, "bg-zinc-950/60");
-  }
+  if (kind === "available") return cx(base, "bg-slate-950/55");
+  if (kind === "board") return cx(base, "bg-zinc-950/60");
 
   // My Team = gold emphasis
   return cx(base, "bg-amber-950/25 border-amber-300/15");
@@ -92,22 +102,34 @@ function posStyles(pos?: string) {
   const p = (pos ?? "").toUpperCase();
 
   const row =
-    p === "QB" ? "bg-sky-500/10" :
-    p === "RB" ? "bg-emerald-500/10" :
-    p === "WR" ? "bg-purple-500/10" :
-    p === "TE" ? "bg-orange-500/10" :
-    p === "K"  ? "bg-yellow-500/10" :
-    p === "DST"? "bg-red-500/10" :
-    "";
+    p === "QB"
+      ? "bg-sky-500/10"
+      : p === "RB"
+      ? "bg-emerald-500/10"
+      : p === "WR"
+      ? "bg-purple-500/10"
+      : p === "TE"
+      ? "bg-orange-500/10"
+      : p === "K"
+      ? "bg-yellow-500/10"
+      : p === "DST"
+      ? "bg-red-500/10"
+      : "";
 
   const pill =
-    p === "QB" ? "border-sky-400/30 bg-sky-500/15 text-sky-200" :
-    p === "RB" ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-200" :
-    p === "WR" ? "border-purple-400/30 bg-purple-500/15 text-purple-200" :
-    p === "TE" ? "border-orange-400/30 bg-orange-500/15 text-orange-200" :
-    p === "K"  ? "border-yellow-400/30 bg-yellow-500/15 text-yellow-100" :
-    p === "DST"? "border-red-400/30 bg-red-500/15 text-red-200" :
-    "border-white/15 bg-white/5 text-white/70";
+    p === "QB"
+      ? "border-sky-400/30 bg-sky-500/15 text-sky-200"
+      : p === "RB"
+      ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-200"
+      : p === "WR"
+      ? "border-purple-400/30 bg-purple-500/15 text-purple-200"
+      : p === "TE"
+      ? "border-orange-400/30 bg-orange-500/15 text-orange-200"
+      : p === "K"
+      ? "border-yellow-400/30 bg-yellow-500/15 text-yellow-100"
+      : p === "DST"
+      ? "border-red-400/30 bg-red-500/15 text-red-200"
+      : "border-white/15 bg-white/5 text-white/70";
 
   return { row, pill, label: p || "—" };
 }
@@ -125,6 +147,7 @@ function PosPill({ pos }: { pos?: string }) {
     </span>
   );
 }
+
 function getNextCoachIdForPick(overallPickNumber: number, draftOrder: string[]) {
   // overallPickNumber is 1-based. "Up next" means overallPickNumber + 1
   return getCoachIdForPick(overallPickNumber + 1, draftOrder);
@@ -132,7 +155,7 @@ function getNextCoachIdForPick(overallPickNumber: number, draftOrder: string[]) 
 
 /**
  * Snake + 3rd round reversal
- * draftOrder is the Round 1 order (pick 1 -> 12)
+ * draftOrder is the Round 1 order (pick 1 -> N)
  */
 function getCoachIdForPick(overallPickNumber: number, draftOrder: string[]) {
   const n = draftOrder.length;
@@ -142,10 +165,10 @@ function getCoachIdForPick(overallPickNumber: number, draftOrder: string[]) {
   const indexInRound0 = (overallPickNumber - 1) % n; // 0..n-1
 
   // Rules:
-  // R1: forward (1->12)
-  // R2: reverse (12->1)
-  // R3: reverse (12->1)  <-- 3rd round reversal
-  // R4: forward (1->12)
+  // R1: forward (1->N)
+  // R2: reverse (N->1)
+  // R3: reverse (N->1)  <-- 3rd round reversal
+  // R4: forward (1->N)
   // R5: reverse, R6: forward, etc...
   const isReverse =
     roundNumber === 2 ||
@@ -161,7 +184,12 @@ function roundAndPickInRound(overallPickNumber: number, nCoaches: number) {
   const pickInRound = ((overallPickNumber - 1) % nCoaches) + 1;
   return { roundNumber, pickInRound };
 }
-async function loadPoints(roomId: string, supabase: any) {
+
+// =============================
+// DB helpers: points + elimination
+// =============================
+
+async function loadPointsMap(roomId: string) {
   const { data, error } = await supabase
     .from("player_points")
     .select("player_id, game_number, points")
@@ -170,7 +198,7 @@ async function loadPoints(roomId: string, supabase: any) {
   if (error) throw error;
 
   const map: Record<string, number[]> = {};
-  (data ?? []).forEach((r: any) => {
+  (data as PlayerPointsRow[] | null | undefined)?.forEach((r) => {
     if (!map[r.player_id]) map[r.player_id] = [0, 0, 0, 0];
     const idx = Math.max(1, Math.min(4, Number(r.game_number))) - 1;
     map[r.player_id][idx] = Number(r.points ?? 0);
@@ -183,26 +211,23 @@ async function upsertPoints(
   roomId: string,
   playerId: string,
   gameNumber: number,
-  pts: number,
-  supabase: any
+  pts: number
 ) {
-  const { error } = await supabase
-    .from("player_points")
-    .upsert(
-      {
-        room_id: roomId,
-        player_id: playerId,
-        game_number: gameNumber,
-        points: pts,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "room_id,player_id,game_number" }
-    );
+  const { error } = await supabase.from("player_points").upsert(
+    {
+      room_id: roomId,
+      player_id: playerId,
+      game_number: gameNumber,
+      points: pts,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "room_id,player_id,game_number" }
+  );
 
   if (error) throw error;
 }
 
-async function loadNflTeamStatus(roomId: string, supabase: any) {
+async function loadNflTeamStatusMap(roomId: string) {
   const { data, error } = await supabase
     .from("nfl_team_status")
     .select("nfl_team, eliminated")
@@ -211,19 +236,14 @@ async function loadNflTeamStatus(roomId: string, supabase: any) {
   if (error) throw error;
 
   const map: Record<string, boolean> = {};
-  (data ?? []).forEach((r: any) => {
+  (data as NflTeamStatusRow[] | null | undefined)?.forEach((r) => {
     map[String(r.nfl_team)] = !!r.eliminated;
   });
 
   return map;
 }
 
-async function setTeamElimination(
-  roomId: string,
-  nflTeam: string,
-  eliminated: boolean,
-  supabase: any
-) {
+async function setTeamElimination(roomId: string, nflTeam: string, eliminated: boolean) {
   const { error } = await supabase
     .from("nfl_team_status")
     .upsert(
@@ -248,10 +268,7 @@ export default function DraftRoomPage() {
     [params.roomCode]
   );
 
-  const token = useMemo(
-    () => (searchParams.get("token") ?? "").trim(),
-    [searchParams]
-  );
+  const token = useMemo(() => (searchParams.get("token") ?? "").trim(), [searchParams]);
 
   const [status, setStatus] = useState<"loading" | "error" | "ok">("loading");
   const [errorMsg, setErrorMsg] = useState("");
@@ -261,26 +278,26 @@ export default function DraftRoomPage() {
 
   const isCommissioner = coach?.coach_name === "Rowland";
 
-  // Keep FULL player list in state; availability is derived from picks
   const [players, setPlayers] = useState<Player[]>([]);
   const [picks, setPicks] = useState<PickRow[]>([]);
 
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState("ALL");
   const [busyPlayerId, setBusyPlayerId] = useState<string | null>(null);
-  // ---------- POINTS + ELIMINATION STATE ----------
-const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number[]>>({});
-// example: pointsByPlayer[playerId] = [g1, g2, g3, g4]
 
-const [teamEliminated, setTeamEliminated] = useState<Record<string, boolean>>({});
-// example: teamEliminated["Rams"] = true
+  // ✅ pointsByPlayer[playerId] = [g1, g2, g3, g4]
+  const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number[]>>({});
+  // ✅ teamEliminated["Rams"] = true
+  const [teamEliminated, setTeamEliminated] = useState<Record<string, boolean>>({});
 
-// commissioner inputs
-const [pointsPlayerId, setPointsPlayerId] = useState<string>("");
-const [pointsGame, setPointsGame] = useState<number>(1);
-const [pointsValue, setPointsValue] = useState<string>("0");
+  // commissioner inputs (phase 2/3 later)
+  const [pointsPlayerId, setPointsPlayerId] = useState<string>("");
+  const [pointsGame, setPointsGame] = useState<number>(1);
+  const [pointsValue, setPointsValue] = useState<string>("0");
+  const [teamToToggle, setTeamToToggle] = useState<string>("");
 
-const [teamToToggle, setTeamToToggle] = useState<string>("");
+  const totalForPlayer = (playerId: string) =>
+    (pointsByPlayer[playerId] ?? [0, 0, 0, 0]).reduce((a, b) => a + b, 0);
 
   // ----------------------------
   // Load helpers
@@ -323,35 +340,6 @@ const [teamToToggle, setTeamToToggle] = useState<string>("");
       .eq("room_id", roomId)
       .order("coach_name", { ascending: true });
 
-      const loadPoints = async (roomId: string) => {
-  const res = await supabase
-    .from("player_points")
-    .select("player_id, game1, game2, game3, game4, total")
-    .eq("room_id", roomId);
-
-  if (!res.error && res.data) {
-    const map: Record<string, number> = {};
-    res.data.forEach((r) => {
-      map[r.player_id] = r.total ?? 0;
-    });
-    setPointsByPlayer(map);
-  }
-};
-
-const loadTeamElimination = async (roomId: string) => {
-  const res = await supabase
-    .from("nfl_team_status")
-    .select("nfl_team, eliminated")
-    .eq("room_id", roomId);
-
-  if (!res.error && res.data) {
-    const map: Record<string, boolean> = {};
-    res.data.forEach((r) => {
-      map[r.nfl_team] = r.eliminated;
-    });
-    setTeamEliminated(map);
-  }
-};
     if (!res.error && res.data) setCoaches(res.data as any);
   };
 
@@ -403,39 +391,43 @@ const loadTeamElimination = async (roomId: string) => {
         setRoom(roomRes.data as any);
         setCoach(coachRes.data as any);
         setStatus("ok");
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
         setStatus("error");
-        setErrorMsg(e?.message ?? "Unknown error");
+        setErrorMsg(msg);
       }
     };
 
-    run();
+    void run();
   }, [roomCode, token]);
 
   // ----------------------------
-  // Initial load
+  // Initial load (includes points + elimination)
   // ----------------------------
   useEffect(() => {
-  if (status !== "ok" || !room?.id) return;
+    if (status !== "ok" || !room?.id) return;
 
-  const roomId = room.id; // ✅ locks in a non-optional string
+    const roomId = room.id;
 
-  const load = async () => {
-    await Promise.all([
-      loadPlayers(roomId),
-      loadPicks(roomId),
-      loadCoaches(roomId),
+    const load = async () => {
+      const [, , , ptsMap, elimMap] = await Promise.all([
+        loadPlayers(roomId),
+        loadPicks(roomId),
+        loadCoaches(roomId),
+        loadPointsMap(roomId),
+        loadNflTeamStatusMap(roomId),
+      ]);
 
-      // loadPoints(roomId),
-      // loadTeamElimination(roomId),
-    ]);
-  };
+      setPointsByPlayer(ptsMap);
+      setTeamEliminated(elimMap);
+    };
 
-  void load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [status, room?.id]);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, room?.id]);
+
   // ----------------------------
-  // Realtime: picks changes (draft/undo) -> refresh picks for everyone
+  // Realtime: picks changes (draft/undo)
   // ----------------------------
   useEffect(() => {
     if (status !== "ok" || !room?.id) return;
@@ -476,23 +468,22 @@ const loadTeamElimination = async (roomId: string) => {
   }, [myPicks]);
 
   const availablePlayers = useMemo(() => {
-  const q = search.trim().toLowerCase();
-  return players
-    // ❌ Remove Kickers & DST completely
-    .filter((p) => !["K", "DST"].includes(p.position))
-    .filter((p) => !draftedPlayerIds.has(p.id))
-    .filter((p) => (posFilter === "ALL" ? true : p.position === posFilter))
-    .filter((p) => {
-      if (!q) return true;
-      return (
-        p.player_name.toLowerCase().includes(q) ||
-        p.nfl_team.toLowerCase().includes(q) ||
-        p.position.toLowerCase().includes(q)
-      );
-    });
-}, [players, draftedPlayerIds, search, posFilter]);
+    const q = search.trim().toLowerCase();
+    return players
+      // ❌ Remove K / DST completely
+      .filter((p) => !["K", "DST"].includes((p.position ?? "").toUpperCase()))
+      .filter((p) => !draftedPlayerIds.has(p.id))
+      .filter((p) => (posFilter === "ALL" ? true : p.position === posFilter))
+      .filter((p) => {
+        if (!q) return true;
+        return (
+          p.player_name.toLowerCase().includes(q) ||
+          p.nfl_team.toLowerCase().includes(q) ||
+          p.position.toLowerCase().includes(q)
+        );
+      });
+  }, [players, draftedPlayerIds, search, posFilter]);
 
-  // NEXT overall pick = number of picks + 1
   const nextOverallPick = useMemo(() => picks.length + 1, [picks.length]);
 
   const nextSlot = useMemo(() => {
@@ -509,14 +500,16 @@ const loadTeamElimination = async (roomId: string) => {
     if (!onTheClockCoachId) return "—";
     return coaches.find((c) => c.id === onTheClockCoachId)?.coach_name ?? "—";
   }, [coaches, onTheClockCoachId]);
+
   const upNextCoachId = useMemo(() => {
-  if (!room?.draft_order?.length) return null;
-  return getCoachIdForPick(nextOverallPick + 1, room.draft_order);
-}, [room?.draft_order, nextOverallPick]);
-const upNextCoachName = useMemo(() => {
-  if (!upNextCoachId) return "—";
-  return coaches.find((c) => c.id === upNextCoachId)?.coach_name ?? "—";
-}, [coaches, upNextCoachId]);
+    if (!room?.draft_order?.length) return null;
+    return getCoachIdForPick(nextOverallPick + 1, room.draft_order);
+  }, [room?.draft_order, nextOverallPick]);
+
+  const upNextCoachName = useMemo(() => {
+    if (!upNextCoachId) return "—";
+    return coaches.find((c) => c.id === upNextCoachId)?.coach_name ?? "—";
+  }, [coaches, upNextCoachId]);
 
   const isMyTurn = useMemo(() => {
     if (!coach?.id || !onTheClockCoachId) return false;
@@ -551,7 +544,6 @@ const upNextCoachName = useMemo(() => {
         return;
       }
 
-      // Prevent accidental duplicate in UI (DB should also enforce uniqueness if set)
       if (draftedPlayerIds.has(player.id)) {
         alert("That player is already drafted.");
         return;
@@ -562,7 +554,7 @@ const upNextCoachName = useMemo(() => {
       const { error } = await supabase.from("picks").insert({
         room_id: room.id,
         coach_id: coach.id,
-        round: overallPickNumber, // we are using this column as overall pick #
+        round: overallPickNumber, // storing overall pick #
         player_id: player.id,
       });
 
@@ -571,10 +563,10 @@ const upNextCoachName = useMemo(() => {
         return;
       }
 
-      // realtime updates everyone; refresh this page immediately too
       await loadPicks(room.id);
-    } catch (e: any) {
-      alert(e?.message ?? "Unexpected error while drafting.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unexpected error while drafting.";
+      alert(msg);
     } finally {
       setBusyPlayerId(null);
     }
@@ -617,10 +609,10 @@ const upNextCoachName = useMemo(() => {
         return;
       }
 
-      // realtime will update everyone; refresh this page immediately too
       await loadPicks(room.id);
-    } catch (e: any) {
-      alert(e?.message ?? "Undo failed.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Undo failed.";
+      alert(msg);
     }
   };
 
@@ -664,7 +656,8 @@ const upNextCoachName = useMemo(() => {
                 Room code: <span className="font-mono">{roomCode}</span>
               </p>
               <p className="mt-1 text-white/70">
-                You are drafting as: <span className="font-semibold">{coach?.coach_name}</span>
+                You are drafting as:{" "}
+                <span className="font-semibold">{coach?.coach_name}</span>
               </p>
 
               <p className="mt-2 text-white/80">
@@ -674,9 +667,10 @@ const upNextCoachName = useMemo(() => {
                 </span>
                 {!isMyTurn && <span className="text-white/60"> (not your turn)</span>}
               </p>
+
               <p className="mt-1 text-white/60">
-  Up next: <span className="font-semibold">{upNextCoachName}</span>
-</p>
+                Up next: <span className="font-semibold">{upNextCoachName}</span>
+              </p>
 
               {isCommissioner && (
                 <button
@@ -712,7 +706,9 @@ const upNextCoachName = useMemo(() => {
           <section className={paneClass("available") + " lg:col-span-5"}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Available Players</h2>
-              <span className="text-sm text-white/60">{availablePlayers.length} available</span>
+              <span className="text-sm text-white/60">
+                {availablePlayers.length} available
+              </span>
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row gap-3">
@@ -759,10 +755,7 @@ const upNextCoachName = useMemo(() => {
                     const disabled = !isMyTurn || teamUsed || busyPlayerId === p.id;
 
                     return (
-                      <tr
-  key={p.id}
-  className="border-b border-white/5"
->
+                      <tr key={p.id} className="border-b border-white/5">
                         <td className="p-3">{p.player_name}</td>
                         <td className={cx("p-3", teamUsed && "text-orange-300")}>
                           {p.nfl_team}
@@ -823,20 +816,21 @@ const upNextCoachName = useMemo(() => {
 
                 <tbody>
                   {[...picks].reverse().map((pk, i, reversed) => {
-                    const overallPick = pk.round; // stored as overall pick #
+                    const overallPick = pk.round;
                     const { roundNumber, pickInRound } = nCoaches
                       ? roundAndPickInRound(overallPick, nCoaches)
                       : { roundNumber: 0, pickInRound: 0 };
 
                     const prev = reversed[i - 1];
-                    const prevRound = prev && nCoaches
-                      ? roundAndPickInRound(prev.round, nCoaches).roundNumber
-                      : null;
+                    const prevRound =
+                      prev && nCoaches
+                        ? roundAndPickInRound(prev.round, nCoaches).roundNumber
+                        : null;
 
                     const roundChanged = nCoaches ? prevRound !== roundNumber : i === 0;
 
-                    // Alternating round shading
-                    const roundTint = roundNumber % 2 === 0 ? "bg-white/[0.03]" : "bg-transparent";
+                    const roundTint =
+                      roundNumber % 2 === 0 ? "bg-white/[0.03]" : "bg-transparent";
 
                     const isMine = pk.coach_id === coach?.id;
 
@@ -878,7 +872,8 @@ const upNextCoachName = useMemo(() => {
                         {nextSlot.roundNumber}.{nextSlot.pickInRound}
                       </td>
                       <td className="p-3 font-semibold text-emerald-200">
-                        {onTheClockCoachName} <span className="text-emerald-200/70">(ON THE CLOCK)</span>
+                        {onTheClockCoachName}{" "}
+                        <span className="text-emerald-200/70">(ON THE CLOCK)</span>
                       </td>
                       <td className="p-3 text-white/60">—</td>
                     </tr>
@@ -888,7 +883,8 @@ const upNextCoachName = useMemo(() => {
             </div>
 
             <div className="mt-3 text-xs text-white/50">
-              Round.Pick format shown as <span className="font-mono">R.P</span> (example: 2.7 = Round 2, Pick 7 in round).
+              Round.Pick format shown as <span className="font-mono">R.P</span> (example:
+              2.7 = Round 2, Pick 7 in round).
             </div>
           </section>
 
@@ -899,17 +895,17 @@ const upNextCoachName = useMemo(() => {
             <div className="mt-3">
               <div className="text-sm text-white/70">Teams used</div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {Array.from(myTeamsUsed).sort().map((t) => (
-                  <span
-                    key={t}
-                    className="text-xs rounded-full border border-white/15 bg-black/30 px-2 py-1"
-                  >
-                    {t}
-                  </span>
-                ))}
-                {!myTeamsUsed.size && (
-                  <span className="text-sm text-white/60">None yet</span>
-                )}
+                {Array.from(myTeamsUsed)
+                  .sort()
+                  .map((t) => (
+                    <span
+                      key={t}
+                      className="text-xs rounded-full border border-white/15 bg-black/30 px-2 py-1"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                {!myTeamsUsed.size && <span className="text-sm text-white/60">None yet</span>}
               </div>
             </div>
 
@@ -923,33 +919,49 @@ const upNextCoachName = useMemo(() => {
                 </thead>
                 <tbody>
                   {myPicks.map((pk) => {
-  const pos = pk.player?.position ?? "";
-  const s = teamPosStyles(pos);
+                    const pos = pk.player?.position ?? "";
+                    const s = teamPosStyles(pos);
+                    const nflTeam = pk.player?.nfl_team ?? "";
+                    const eliminated = nflTeam ? !!teamEliminated[nflTeam] : false;
 
-  return (
-    <tr key={pk.id} className={cx("border-b border-white/5", s.row)}>
-      <td className="p-3">
-        <div className="flex items-center gap-2">
-          <span>{pk.player?.player_name ?? "—"}</span>
+                    return (
+                      <tr key={pk.id} className={cx("border-b border-white/5", s.row)}>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className={cx(eliminated && "line-through text-white/40")}>
+                              {pk.player?.player_name ?? "—"}
+                            </span>
 
-          {/* Position badge */}
-          {pos ? (
-            <span
-              className={cx(
-                "text-[11px] rounded-full border px-2 py-0.5",
-                s.badge
-              )}
-            >
-              {pos}
-            </span>
-          ) : null}
-        </div>
-      </td>
+                            {pos ? (
+                              <span
+                                className={cx(
+                                  "text-[11px] rounded-full border px-2 py-0.5",
+                                  s.badge
+                                )}
+                              >
+                                {pos}
+                              </span>
+                            ) : null}
+                          </div>
 
-      <td className="p-3 text-white/70">{pk.player?.nfl_team ?? "—"}</td>
-    </tr>
-  );
-})}
+                          {/* optional: show total points (already available) */}
+                          <div className="mt-1 text-xs text-white/50">
+                            Total:{" "}
+                            <span className="font-mono">
+                              {totalForPlayer(pk.player_id).toFixed(1)}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="p-3 text-white/70">
+                          <span className={cx(eliminated && "line-through text-white/40")}>
+                            {nflTeam || "—"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
                   {!myPicks.length && (
                     <tr>
                       <td className="p-3 text-white/60" colSpan={2}>
@@ -962,7 +974,8 @@ const upNextCoachName = useMemo(() => {
             </div>
 
             <div className="mt-4 text-xs text-white/50">
-              Rule: max 1 player per NFL team (per coach). Duplicate players are blocked automatically.
+              Rule: max 1 player per NFL team (per coach). Duplicate players are blocked
+              automatically.
               <div className="mt-2">
                 <span className="inline-block mr-2 h-3 w-3 rounded bg-sky-500/30 align-middle" />
                 Your picks are highlighted on the Draft Board.
@@ -979,8 +992,6 @@ const upNextCoachName = useMemo(() => {
  * Helper component to render:
  * - Optional ROUND header row
  * - Then the pick row
- *
- * Kept at bottom for readability.
  */
 function FragmentRow(props: {
   roundChanged: boolean;
@@ -999,10 +1010,7 @@ function FragmentRow(props: {
     <>
       {roundChanged && (
         <tr>
-          <td
-            colSpan={4}
-            className="px-3 py-2 text-xs font-semibold text-white/70 bg-white/5"
-          >
+          <td colSpan={4} className="px-3 py-2 text-xs font-semibold text-white/70 bg-white/5">
             ROUND {roundNumber || "—"}
           </td>
         </tr>
