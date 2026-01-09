@@ -40,6 +40,17 @@ type PickRow = {
   player?: PickPlayer;
   coach?: PickCoach;
 };
+type PlayerPointsRow = {
+  player_id: string;
+  game_number: number; // 1..4
+  points: number;
+};
+
+type NflTeamStatusRow = {
+  nfl_team: string;
+  eliminated: boolean;
+  eliminated_at: string | null;
+};
 
 function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
@@ -150,6 +161,83 @@ function roundAndPickInRound(overallPickNumber: number, nCoaches: number) {
   const pickInRound = ((overallPickNumber - 1) % nCoaches) + 1;
   return { roundNumber, pickInRound };
 }
+async function loadPoints(roomId: string, supabase: any) {
+  const { data, error } = await supabase
+    .from("player_points")
+    .select("player_id, game_number, points")
+    .eq("room_id", roomId);
+
+  if (error) throw error;
+
+  const map: Record<string, number[]> = {};
+  (data ?? []).forEach((r: any) => {
+    if (!map[r.player_id]) map[r.player_id] = [0, 0, 0, 0];
+    const idx = Math.max(1, Math.min(4, Number(r.game_number))) - 1;
+    map[r.player_id][idx] = Number(r.points ?? 0);
+  });
+
+  return map;
+}
+
+async function upsertPoints(
+  roomId: string,
+  playerId: string,
+  gameNumber: number,
+  pts: number,
+  supabase: any
+) {
+  const { error } = await supabase
+    .from("player_points")
+    .upsert(
+      {
+        room_id: roomId,
+        player_id: playerId,
+        game_number: gameNumber,
+        points: pts,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "room_id,player_id,game_number" }
+    );
+
+  if (error) throw error;
+}
+
+async function loadNflTeamStatus(roomId: string, supabase: any) {
+  const { data, error } = await supabase
+    .from("nfl_team_status")
+    .select("nfl_team, eliminated")
+    .eq("room_id", roomId);
+
+  if (error) throw error;
+
+  const map: Record<string, boolean> = {};
+  (data ?? []).forEach((r: any) => {
+    map[String(r.nfl_team)] = !!r.eliminated;
+  });
+
+  return map;
+}
+
+async function setTeamElimination(
+  roomId: string,
+  nflTeam: string,
+  eliminated: boolean,
+  supabase: any
+) {
+  const { error } = await supabase
+    .from("nfl_team_status")
+    .upsert(
+      {
+        room_id: roomId,
+        nfl_team: nflTeam,
+        eliminated,
+        eliminated_at: eliminated ? new Date().toISOString() : null,
+      },
+      { onConflict: "room_id,nfl_team" }
+    );
+
+  if (error) throw error;
+}
 
 export default function DraftRoomPage() {
   const params = useParams<{ roomCode: string }>();
@@ -180,6 +268,19 @@ export default function DraftRoomPage() {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState("ALL");
   const [busyPlayerId, setBusyPlayerId] = useState<string | null>(null);
+  // ---------- POINTS + ELIMINATION STATE ----------
+const [pointsByPlayer, setPointsByPlayer] = useState<Record<string, number[]>>({});
+// example: pointsByPlayer[playerId] = [g1, g2, g3, g4]
+
+const [teamEliminated, setTeamEliminated] = useState<Record<string, boolean>>({});
+// example: teamEliminated["Rams"] = true
+
+// commissioner inputs
+const [pointsPlayerId, setPointsPlayerId] = useState<string>("");
+const [pointsGame, setPointsGame] = useState<number>(1);
+const [pointsValue, setPointsValue] = useState<string>("0");
+
+const [teamToToggle, setTeamToToggle] = useState<string>("");
 
   // ----------------------------
   // Load helpers
@@ -222,6 +323,35 @@ export default function DraftRoomPage() {
       .eq("room_id", roomId)
       .order("coach_name", { ascending: true });
 
+      const loadPoints = async (roomId: string) => {
+  const res = await supabase
+    .from("player_points")
+    .select("player_id, game1, game2, game3, game4, total")
+    .eq("room_id", roomId);
+
+  if (!res.error && res.data) {
+    const map: Record<string, number> = {};
+    res.data.forEach((r) => {
+      map[r.player_id] = r.total ?? 0;
+    });
+    setPointsByPlayer(map);
+  }
+};
+
+const loadTeamElimination = async (roomId: string) => {
+  const res = await supabase
+    .from("nfl_team_status")
+    .select("nfl_team, eliminated")
+    .eq("room_id", roomId);
+
+  if (!res.error && res.data) {
+    const map: Record<string, boolean> = {};
+    res.data.forEach((r) => {
+      map[r.nfl_team] = r.eliminated;
+    });
+    setTeamEliminated(map);
+  }
+};
     if (!res.error && res.data) setCoaches(res.data as any);
   };
 
@@ -286,14 +416,24 @@ export default function DraftRoomPage() {
   // Initial load
   // ----------------------------
   useEffect(() => {
-    if (status !== "ok" || !room?.id) return;
-    const load = async () => {
-      await Promise.all([loadPlayers(room.id), loadPicks(room.id), loadCoaches(room.id)]);
-    };
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, room?.id]);
+  if (status !== "ok" || !room?.id) return;
 
+  const roomId = room.id; // ✅ locks in a non-optional string
+
+  const load = async () => {
+    await Promise.all([
+      loadPlayers(roomId),
+      loadPicks(roomId),
+      loadCoaches(roomId),
+
+      // loadPoints(roomId),
+      // loadTeamElimination(roomId),
+    ]);
+  };
+
+  void load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [status, room?.id]);
   // ----------------------------
   // Realtime: picks changes (draft/undo) -> refresh picks for everyone
   // ----------------------------
