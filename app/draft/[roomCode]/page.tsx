@@ -44,6 +44,80 @@ type PickRow = {
 function cx(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
+const teamPosStyles = (pos?: string) => {
+  switch (pos) {
+    case "QB":
+      return { row: "bg-sky-500/10", badge: "bg-sky-500/20 text-sky-100 border-sky-400/30" };
+    case "RB":
+      return { row: "bg-emerald-500/10", badge: "bg-emerald-500/20 text-emerald-100 border-emerald-400/30" };
+    case "WR":
+      return { row: "bg-violet-500/10", badge: "bg-violet-500/20 text-violet-100 border-violet-400/30" };
+    case "TE":
+      return { row: "bg-amber-500/10", badge: "bg-amber-500/20 text-amber-100 border-amber-400/30" };
+    default:
+      return { row: "", badge: "bg-white/5 text-white/70 border-white/15" };
+  }
+};
+// =============================
+// UI helpers (pane + positions)
+// =============================
+
+function paneClass(kind: "available" | "board" | "team") {
+  const base = "rounded-2xl border border-white/10 p-5";
+
+  if (kind === "available") {
+    return cx(base, "bg-slate-950/55");
+  }
+
+  if (kind === "board") {
+    return cx(base, "bg-zinc-950/60");
+  }
+
+  // My Team = gold emphasis
+  return cx(base, "bg-amber-950/25 border-amber-300/15");
+}
+
+function posStyles(pos?: string) {
+  const p = (pos ?? "").toUpperCase();
+
+  const row =
+    p === "QB" ? "bg-sky-500/10" :
+    p === "RB" ? "bg-emerald-500/10" :
+    p === "WR" ? "bg-purple-500/10" :
+    p === "TE" ? "bg-orange-500/10" :
+    p === "K"  ? "bg-yellow-500/10" :
+    p === "DST"? "bg-red-500/10" :
+    "";
+
+  const pill =
+    p === "QB" ? "border-sky-400/30 bg-sky-500/15 text-sky-200" :
+    p === "RB" ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-200" :
+    p === "WR" ? "border-purple-400/30 bg-purple-500/15 text-purple-200" :
+    p === "TE" ? "border-orange-400/30 bg-orange-500/15 text-orange-200" :
+    p === "K"  ? "border-yellow-400/30 bg-yellow-500/15 text-yellow-100" :
+    p === "DST"? "border-red-400/30 bg-red-500/15 text-red-200" :
+    "border-white/15 bg-white/5 text-white/70";
+
+  return { row, pill, label: p || "—" };
+}
+
+function PosPill({ pos }: { pos?: string }) {
+  const s = posStyles(pos);
+  return (
+    <span
+      className={cx(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        s.pill
+      )}
+    >
+      {s.label}
+    </span>
+  );
+}
+function getNextCoachIdForPick(overallPickNumber: number, draftOrder: string[]) {
+  // overallPickNumber is 1-based. "Up next" means overallPickNumber + 1
+  return getCoachIdForPick(overallPickNumber + 1, draftOrder);
+}
 
 /**
  * Snake + 3rd round reversal
@@ -262,20 +336,21 @@ export default function DraftRoomPage() {
   }, [myPicks]);
 
   const availablePlayers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    return players
-      .filter((p) => !draftedPlayerIds.has(p.id))
-      .filter((p) => (posFilter === "ALL" ? true : p.position === posFilter))
-      .filter((p) => {
-        if (!q) return true;
-        return (
-          p.player_name.toLowerCase().includes(q) ||
-          p.nfl_team.toLowerCase().includes(q) ||
-          p.position.toLowerCase().includes(q)
-        );
-      });
-  }, [players, draftedPlayerIds, search, posFilter]);
+  const q = search.trim().toLowerCase();
+  return players
+    // ❌ Remove Kickers & DST completely
+    .filter((p) => !["K", "DST"].includes(p.position))
+    .filter((p) => !draftedPlayerIds.has(p.id))
+    .filter((p) => (posFilter === "ALL" ? true : p.position === posFilter))
+    .filter((p) => {
+      if (!q) return true;
+      return (
+        p.player_name.toLowerCase().includes(q) ||
+        p.nfl_team.toLowerCase().includes(q) ||
+        p.position.toLowerCase().includes(q)
+      );
+    });
+}, [players, draftedPlayerIds, search, posFilter]);
 
   // NEXT overall pick = number of picks + 1
   const nextOverallPick = useMemo(() => picks.length + 1, [picks.length]);
@@ -294,13 +369,21 @@ export default function DraftRoomPage() {
     if (!onTheClockCoachId) return "—";
     return coaches.find((c) => c.id === onTheClockCoachId)?.coach_name ?? "—";
   }, [coaches, onTheClockCoachId]);
+  const upNextCoachId = useMemo(() => {
+  if (!room?.draft_order?.length) return null;
+  return getCoachIdForPick(nextOverallPick + 1, room.draft_order);
+}, [room?.draft_order, nextOverallPick]);
+const upNextCoachName = useMemo(() => {
+  if (!upNextCoachId) return "—";
+  return coaches.find((c) => c.id === upNextCoachId)?.coach_name ?? "—";
+}, [coaches, upNextCoachId]);
 
   const isMyTurn = useMemo(() => {
     if (!coach?.id || !onTheClockCoachId) return false;
     return coach.id === onTheClockCoachId;
   }, [coach?.id, onTheClockCoachId]);
 
-  const positions = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+  const positions = ["ALL", "QB", "RB", "WR", "TE"];
 
   // ----------------------------
   // Actions
@@ -451,6 +534,9 @@ export default function DraftRoomPage() {
                 </span>
                 {!isMyTurn && <span className="text-white/60"> (not your turn)</span>}
               </p>
+              <p className="mt-1 text-white/60">
+  Up next: <span className="font-semibold">{upNextCoachName}</span>
+</p>
 
               {isCommissioner && (
                 <button
@@ -483,7 +569,7 @@ export default function DraftRoomPage() {
         {/* 3 columns */}
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Player Pool */}
-          <section className="lg:col-span-5 rounded-2xl border border-white/10 bg-black/40 p-5">
+          <section className={paneClass("available") + " lg:col-span-5"}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Available Players</h2>
               <span className="text-sm text-white/60">{availablePlayers.length} available</span>
@@ -533,7 +619,10 @@ export default function DraftRoomPage() {
                     const disabled = !isMyTurn || teamUsed || busyPlayerId === p.id;
 
                     return (
-                      <tr key={p.id} className="border-b border-white/5">
+                      <tr
+  key={p.id}
+  className="border-b border-white/5"
+>
                         <td className="p-3">{p.player_name}</td>
                         <td className={cx("p-3", teamUsed && "text-orange-300")}>
                           {p.nfl_team}
@@ -578,7 +667,7 @@ export default function DraftRoomPage() {
           </section>
 
           {/* Draft Board */}
-          <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-black/40 p-5">
+          <section className={paneClass("board") + " lg:col-span-4"}>
             <h2 className="text-lg font-semibold">Draft Board</h2>
 
             <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-white/10">
@@ -664,7 +753,7 @@ export default function DraftRoomPage() {
           </section>
 
           {/* My Team */}
-          <section className="lg:col-span-3 rounded-2xl border border-white/10 bg-black/40 p-5">
+          <section className={paneClass("team") + " lg:col-span-3"}>
             <h2 className="text-lg font-semibold">My Team</h2>
 
             <div className="mt-3">
@@ -693,12 +782,34 @@ export default function DraftRoomPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {myPicks.map((pk) => (
-                    <tr key={pk.id} className="border-b border-white/5">
-                      <td className="p-3">{pk.player?.player_name ?? "—"}</td>
-                      <td className="p-3 text-white/70">{pk.player?.nfl_team ?? "—"}</td>
-                    </tr>
-                  ))}
+                  {myPicks.map((pk) => {
+  const pos = pk.player?.position ?? "";
+  const s = teamPosStyles(pos);
+
+  return (
+    <tr key={pk.id} className={cx("border-b border-white/5", s.row)}>
+      <td className="p-3">
+        <div className="flex items-center gap-2">
+          <span>{pk.player?.player_name ?? "—"}</span>
+
+          {/* Position badge */}
+          {pos ? (
+            <span
+              className={cx(
+                "text-[11px] rounded-full border px-2 py-0.5",
+                s.badge
+              )}
+            >
+              {pos}
+            </span>
+          ) : null}
+        </div>
+      </td>
+
+      <td className="p-3 text-white/70">{pk.player?.nfl_team ?? "—"}</td>
+    </tr>
+  );
+})}
                   {!myPicks.length && (
                     <tr>
                       <td className="p-3 text-white/60" colSpan={2}>
